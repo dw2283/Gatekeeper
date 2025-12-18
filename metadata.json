@@ -1,0 +1,7 @@
+{
+  "name": "Copy of MemVerse: The Gatekeeper Demo",
+  "description": "An AI-driven simulation demonstrating long-term memory evolution. Watch an agent learn from failure, reflect on NPC feedback, and adapt its strategy to bypass a stubborn gatekeeper using the Gemini API.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
