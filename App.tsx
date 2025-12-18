@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [userInput, setUserInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [activeDialogue, setActiveDialogue] = useState<string | null>(null);
+  const [npcThinking, setNpcThinking] = useState(false);
   
   const recognitionRef = useRef<any>(null);
 
@@ -42,14 +43,18 @@ const App: React.FC = () => {
   }, []);
 
   const toggleListening = () => {
+    if (!recognitionRef.current) return;
     if (isListening) {
-      recognitionRef.current?.stop();
+      recognitionRef.current.stop();
+      setIsListening(false);
     } else {
       setUserInput('');
-      recognitionRef.current?.start();
+      recognitionRef.current.start();
       setIsListening(true);
     }
   };
+
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   const addLog = (type: GameLog['type'], content: string) => {
     setLogs(prev => [...prev, {
@@ -66,11 +71,11 @@ const App: React.FC = () => {
 
     setStatus(GameStatus.THINKING_ACTION);
     soundService.playThinking();
-    addLog('system', `>>> ATTEMPT ${episode} INITIATED [${mode} MODE]`);
-
+    
     try {
       let actionText = '';
       if (mode === 'AUTO') {
+        await delay(800);
         actionText = await geminiService.generateAction(currentNPC.observation, memories.map(m => m.text));
       } else {
         actionText = userInput.trim();
@@ -78,24 +83,30 @@ const App: React.FC = () => {
       }
 
       addLog('action', actionText);
+      soundService.playKeystroke(); 
+      setStatus(GameStatus.IDLE);
 
-      const { isPass, feedback } = currentNPC.rules(actionText);
+      await delay(600);
+      setNpcThinking(true);
+      setActiveDialogue("...");
       
-      // NPC Interaction sequence
+      // 现在 NPC 回复也通过 Gemini 模型生成
+      const { feedback, isPass } = await geminiService.generateNPCResponse(currentNPC.systemInstruction, actionText);
+      
+      setNpcThinking(false);
+      setActiveDialogue(feedback);
       soundService.playFeedback();
-      setActiveDialogue(feedback); // Trigger visual bubble
-      await geminiService.speak(feedback, currentNPC.voice);
-      
-      // Wait a bit for dialogue to be read
-      setTimeout(() => setActiveDialogue(null), feedback.length * 100 + 2000);
-      
       addLog('feedback', feedback);
+      
+      geminiService.speak(feedback, currentNPC.voice);
 
       if (isPass) {
         setStatus(GameStatus.SUCCESS);
         soundService.playSuccess();
-        addLog('system', "ACCESS GRANTED. MEMORY EVOLUTION COMPLETE.");
+        addLog('system', "ACCESS GRANTED. PROTOCOL COMPLETE.");
       } else {
+        await delay(2500);
+        
         setStatus(GameStatus.THINKING_REFLECTION);
         soundService.playThinking();
         
@@ -113,16 +124,17 @@ const App: React.FC = () => {
         
         setEpisode(prev => prev + 1);
         setStatus(GameStatus.FAILED);
+        setActiveDialogue(null);
         
         if (episode >= 10) {
           setStatus(GameStatus.FINISHED);
-          addLog('system', "MAX ITERATIONS REACHED.");
+          addLog('system', "SIMULATION TERMINATED: MAX DEPTH REACHED.");
         }
       }
     } catch (err) {
       console.error(err);
-      addLog('system', "NEURAL LINK INTERRUPTED. RETRYING...");
       setStatus(GameStatus.FAILED);
+      setNpcThinking(false);
       setActiveDialogue(null);
     }
   };
@@ -134,6 +146,7 @@ const App: React.FC = () => {
     setStatus(GameStatus.IDLE);
     setUserInput('');
     setActiveDialogue(null);
+    setNpcThinking(false);
     if (npc) setCurrentNPC(npc);
   };
 
@@ -189,7 +202,7 @@ const App: React.FC = () => {
 
       <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 flex flex-col gap-8">
-          <GateVisual status={status} npc={currentNPC} activeDialogue={activeDialogue} />
+          <GateVisual status={status} npc={currentNPC} activeDialogue={activeDialogue} isNpcThinking={npcThinking} />
           
           {mode === 'MANUAL' && (
             <div className="flex gap-3 items-center bg-slate-900/30 p-5 rounded-[2rem] border border-white/5 backdrop-blur-md">
@@ -228,7 +241,7 @@ const App: React.FC = () => {
              >
                 <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-[1500ms]"></div>
                 <span className="relative z-10">
-                  {status === GameStatus.SUCCESS ? 'PROTOCOL SUCCESS' : isThinking ? 'PROCESSING...' : 'INITIATE EVOLUTION'}
+                  {status === GameStatus.SUCCESS ? 'PROTOCOL SUCCESS' : isThinking ? 'PLANNING...' : 'INITIATE DIALOGUE'}
                 </span>
              </button>
           )}

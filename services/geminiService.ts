@@ -1,8 +1,7 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
-import { ACTION_PROMPT_TEMPLATE, REFLECTION_PROMPT_TEMPLATE } from "../constants";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { ACTION_PROMPT_TEMPLATE, REFLECTION_PROMPT_TEMPLATE, NPC_RESPONSE_PROMPT } from "../constants";
 
-// Helper functions for audio
 function decodeBase64(base64: string) {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -40,18 +39,49 @@ export class GeminiService {
 
   async generateAction(observation: string, memories: string[]): Promise<string> {
     const response = await this.ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-flash-lite-latest',
       contents: ACTION_PROMPT_TEMPLATE(observation, memories),
-      config: { temperature: 0.7 }
+      config: { 
+        temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     });
     return response.text?.trim() || "Hello?";
   }
 
+  async generateNPCResponse(instruction: string, userInput: string): Promise<{ feedback: string; isPass: boolean }> {
+    const response = await this.ai.models.generateContent({
+      model: 'gemini-flash-lite-latest',
+      contents: NPC_RESPONSE_PROMPT(instruction, userInput),
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            feedback: { type: Type.STRING },
+            isPass: { type: Type.BOOLEAN }
+          },
+          required: ["feedback", "isPass"]
+        },
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    });
+    
+    try {
+      return JSON.parse(response.text || '{"feedback": "...", "isPass": false}');
+    } catch (e) {
+      return { feedback: "I cannot process that request.", isPass: false };
+    }
+  }
+
   async generateReflection(action: string, feedback: string): Promise<string> {
     const response = await this.ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-flash-lite-latest',
       contents: REFLECTION_PROMPT_TEMPLATE(action, feedback),
-      config: { temperature: 0.2 }
+      config: { 
+        temperature: 0.2,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     });
     return response.text?.trim() || "I failed.";
   }

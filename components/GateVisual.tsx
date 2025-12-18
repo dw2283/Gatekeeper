@@ -6,9 +6,10 @@ interface GateVisualProps {
   status: GameStatus;
   npc: NPCType;
   activeDialogue: string | null;
+  isNpcThinking?: boolean;
 }
 
-const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) => {
+const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue, isNpcThinking }) => {
   const isSage = npc.id === 'sage';
   const isThinking = status === GameStatus.THINKING_ACTION || status === GameStatus.THINKING_REFLECTION;
   const isSuccess = status === GameStatus.SUCCESS;
@@ -42,15 +43,23 @@ const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) 
       </div>
 
       {/* Character Sprite: Sage or Guardian */}
-      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center transition-all duration-700 ${isThinking ? 'scale-110 -translate-y-4 brightness-110' : ''} ${isFailed ? 'animate-shake' : ''}`}>
+      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center transition-all duration-700 ${isThinking || isNpcThinking ? 'scale-110 -translate-y-4 brightness-110' : ''} ${isFailed ? 'animate-shake' : ''}`}>
         
         {/* Dialogue Bubble */}
-        {activeDialogue && (
+        {(activeDialogue || isNpcThinking) && (
           <div className="absolute bottom-[110%] w-64 mb-6 animate-slideInUp z-30">
             <div className="speech-bubble p-4 text-center">
-              <p className="text-sm font-medium text-slate-100 leading-relaxed italic">
-                {activeDialogue}
-              </p>
+              {activeDialogue === "..." ? (
+                <div className="flex justify-center gap-1.5 py-2">
+                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-slate-100 leading-relaxed italic">
+                  {activeDialogue}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -58,14 +67,14 @@ const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) 
         {isSage ? (
           <div className="relative flex flex-col items-center group">
              {/* Character Glow */}
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 blur-[80px] rounded-full animate-pulse-glow"></div>
+             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-500/10 blur-[80px] rounded-full ${isNpcThinking ? 'animate-pulse' : 'animate-pulse-glow'}`}></div>
              
              {/* The Sage Head */}
              <div className="w-24 h-24 bg-[#fee2e2] rounded-full border-2 border-amber-900 shadow-2xl relative z-10 flex items-center justify-center animate-float">
                 {/* Face Details */}
                 <div className="absolute top-10 left-1/2 -translate-x-1/2 flex gap-8">
-                  <div className="w-3.5 h-3.5 bg-slate-900 rounded-full animate-blink origin-center"></div>
-                  <div className="w-3.5 h-3.5 bg-slate-900 rounded-full animate-blink origin-center"></div>
+                  <div className={`w-3.5 h-3.5 bg-slate-900 rounded-full origin-center ${isNpcThinking ? 'animate-pulse' : 'animate-blink'}`}></div>
+                  <div className={`w-3.5 h-3.5 bg-slate-900 rounded-full origin-center ${isNpcThinking ? 'animate-pulse' : 'animate-blink'}`}></div>
                 </div>
                 {/* The Legendary Beard */}
                 <div className="absolute top-14 left-1/2 -translate-x-1/2 w-20 h-40 bg-white rounded-b-full border-x border-b border-slate-200 shadow-xl animate-sway origin-top">
@@ -84,9 +93,9 @@ const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) 
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-cyan-500/20 blur-[60px] rounded-full animate-pulse-glow"></div>
              
              {/* Floating Core */}
-             <div className="w-20 h-20 bg-slate-900 border-2 border-cyan-400 rounded-2xl rotate-45 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.4)] z-10 animate-float">
+             <div className={`w-20 h-20 bg-slate-900 border-2 border-cyan-400 rounded-2xl rotate-45 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.4)] z-10 animate-float ${isNpcThinking ? 'brightness-150' : ''}`}>
                 <div className="w-10 h-10 bg-cyan-500/30 rounded-full border border-cyan-400 flex items-center justify-center -rotate-45">
-                   <div className="w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_15px_cyan] animate-pulse"></div>
+                   <div className={`w-3 h-3 bg-cyan-400 rounded-full shadow-[0_0_15px_cyan] ${isNpcThinking ? 'animate-ping' : 'animate-pulse'}`}></div>
                 </div>
              </div>
              
@@ -99,7 +108,7 @@ const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) 
         )}
       </div>
 
-      {/* Interface Overlays for Thinking */}
+      {/* Interface Overlays for AI Planning */}
       {isThinking && (
         <div className="absolute inset-0 z-40 bg-blue-500/10 backdrop-blur-[2px] flex items-center justify-center animate-fadeIn">
            <div className="flex flex-col items-center gap-6">
@@ -109,8 +118,9 @@ const GateVisual: React.FC<GateVisualProps> = ({ status, npc, activeDialogue }) 
                 <div className="absolute inset-4 border-4 border-cyan-500/20 border-b-transparent rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '1s'}}></div>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-blue-400 font-mono text-xs font-bold tracking-[0.4em] uppercase animate-pulse">Neural Synthesizing</span>
-                <span className="text-slate-500 font-mono text-[10px] uppercase mt-1">Refining strategy vectors...</span>
+                <span className="text-blue-400 font-mono text-xs font-bold tracking-[0.4em] uppercase animate-pulse">
+                  {status === GameStatus.THINKING_REFLECTION ? 'Synthesizing Insight' : 'Refining Strategy'}
+                </span>
               </div>
            </div>
         </div>

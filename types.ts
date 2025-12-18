@@ -27,5 +27,6 @@ export interface NPCType {
   description: string;
   observation: string;
   voice: 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
-  rules: (input: string) => { isPass: boolean; feedback: string };
+  // 核心改变：由硬编码规则改为系统指令
+  systemInstruction: string;
 }
